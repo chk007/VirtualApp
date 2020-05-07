@@ -44,6 +44,8 @@ import mirror.android.app.job.IJobScheduler;
  * 1.启动DaemonService保活Server进程;
  * 2.初始化各种服务，并将这些服务注册到IPCBus，以便Client调用: 目前有10种服务
  * 3.VAppManagerService.scanApps会将当前用户已经安装的VApp信息，加载到内存
+ *
+ * @Server
  * @author Lody
  */
 public final class BinderProvider extends ContentProvider {
@@ -82,6 +84,7 @@ public final class BinderProvider extends ContentProvider {
     @Override
     public Bundle call(String method, String arg, Bundle extras) {
         if ("@".equals(method)) {
+            // 获取IServiceFetcher对象
             Bundle bundle = new Bundle();
             BundleCompat.putBinder(bundle, "_VA_|_binder_", mServiceFetcher);
             return bundle;
@@ -116,7 +119,10 @@ public final class BinderProvider extends ContentProvider {
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         return 0;
     }
-
+    
+    /**
+     * IServiceFetcher.aidl实现类, 该类提供VA Service的IBinder对象的缓存
+     */
     private class ServiceFetcher extends IServiceFetcher.Stub {
         @Override
         public IBinder getService(String name) throws RemoteException {

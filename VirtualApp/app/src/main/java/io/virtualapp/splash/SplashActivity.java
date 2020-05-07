@@ -33,6 +33,7 @@ public class SplashActivity extends VActivity {
             doActionInThread();
             time = System.currentTimeMillis() - time;
             long delta = 3000L - time;
+            // sleep一段时间，保证VA Server进程初始化完成
             if (delta > 0) {
                 VUiKit.sleep(delta);
             }

@@ -12,6 +12,10 @@ import com.lody.virtual.server.ServiceCache;
 import com.lody.virtual.server.interfaces.IServiceFetcher;
 
 /**
+ * 该类VA Server和每个VA App进程都会有一个实例
+ *
+ * @Server
+ * @VAppClient
  * @author Lody
  */
 public class ServiceManagerNative {
@@ -69,7 +73,12 @@ public class ServiceManagerNative {
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * 根据Service Interface名称获取IBinder对象
+     * @param name Service Interface name
+     * @return IBinder
+     */
     public static IBinder getService(String name) {
         if (VirtualCore.get().isServerProcess()) {
             return ServiceCache.getService(name);
