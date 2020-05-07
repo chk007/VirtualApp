@@ -169,8 +169,20 @@ public final class VirtualCore {
     public PackageManager getUnHookPackageManager() {
         return unHookPackageManager;
     }
-
-
+    
+    
+    /**
+     * 主要完成以下工作：
+     * 1. 初始化Provider的authority
+     * 2. 保留宿主进程关键对象: context, ActivityThread, PackageManager, PackageInfo
+     * 3. 初始化IPCBus
+     * 4. 设定进程类型: Main,Server,VAppClient,CHILD四种类型
+     * 5. Hook操作: main进程不hook; Server进程只hook AMS和PMS; App进程根据ROM版本做不同的Hook
+     * 6. fixContext: 主要目的是将ContextImpl.mPackageManager对象设置为null，避免缓存宿主的PackageManager对象
+     *
+     * @param context
+     * @throws Throwable
+     */
     public void startup(Context context) throws Throwable {
         if (!isStartUp) {
             if (Looper.myLooper() != Looper.getMainLooper()) {
