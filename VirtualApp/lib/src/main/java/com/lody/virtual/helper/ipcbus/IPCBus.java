@@ -21,7 +21,11 @@ public class IPCBus {
             throw new IllegalStateException("please call initialize() at first.");
         }
     }
-
+    
+    /**
+     * 1.将VA Server定义的Interface方法，封装称可以进行IPC的IPCMethod
+     * 2.将TransformBinder添加到IServerCache之中，其中TransformBinder用于VA的Client与Server端通信
+     */
     public static void register(Class<?> interfaceClass, Object server) {
         checkInitialized();
         ServerInterface serverInterface = new ServerInterface(interfaceClass);

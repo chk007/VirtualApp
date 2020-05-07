@@ -61,7 +61,12 @@ public class PackageParserEx {
         }
         return buildPackageCache(p);
     }
-
+    
+    /**
+     * 根据Package name获取package.ini文件，并将其中的信息解析，获得一个VPackage对象
+     * @param packageName VApp package name
+     * @return
+     */
     public static VPackage readPackageCache(String packageName) {
         Parcel p = Parcel.obtain();
         try {

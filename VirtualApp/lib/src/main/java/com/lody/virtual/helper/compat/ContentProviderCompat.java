@@ -13,7 +13,13 @@ import android.os.SystemClock;
  * @author Lody
  */
 public class ContentProviderCompat {
-
+    
+    /**
+     * 1. ContentProviderClient.call(***)是在API 17增加;
+     * 2. 在SDK_INT < 17时，需要通过ContentResolver.call(***)调用
+     * 3. ContentProviderClient instance需要调用close进行释放，
+     *    说明见:https://developer.android.com/reference/android/content/ContentProviderClient
+     */
     public static Bundle call(Context context, Uri uri, String method, String arg, Bundle extras) {
         if (VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
             return context.getContentResolver().call(uri, method, arg, extras);

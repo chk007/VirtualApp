@@ -9,6 +9,9 @@ import com.lody.virtual.server.pm.parser.VPackage;
 import java.util.Arrays;
 
 /**
+ * VApp package信息持久化层
+ * 1.所有VApp的package信息，会被存放在packages.ini
+ *
  * @author Lody
  */
 

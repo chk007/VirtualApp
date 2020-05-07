@@ -8,6 +8,13 @@ import android.os.IBinder;
 
 
 /**
+ * DaemonService用于保活
+ * 1. 在onCreate时，启动InnerService
+ * 2. 保活方案:
+ *	  a. 在onCreate时，调用startForeground将Service设置为前台Service（<b>注意前台Service处理不当，会出现耗电提醒问题</b>)
+ *	  b. onStartCommand返回的是START_STICKY;
+ *	  c. 在Service.onDestroy时，会重新启动DaemonService
+ *
  * @author Lody
  *
  */
@@ -40,6 +47,9 @@ public class DaemonService extends Service {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		// 如果service进程在启动时被kill掉，service仍处于start状态，但不保留本次的intent.
+		// 随后系统会尝试重新创建service，由于Service处于start状态，在创建新的Service实例之后，会保证调用onStartCommand(***).
+		// 如果在此期间，没有滞留的start command，则调用onStartCommand(***)时的intent为null. 我们需要intent=null做防护
 		return START_STICKY;
 	}
 

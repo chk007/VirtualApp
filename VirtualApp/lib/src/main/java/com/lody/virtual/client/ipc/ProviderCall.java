@@ -11,6 +11,7 @@ import com.lody.virtual.helper.compat.ContentProviderCompat;
 import java.io.Serializable;
 
 /**
+ * 封装Provider的接口调用, 利用建造者模式构造Provider调用
  * @author Lody
  *
  */

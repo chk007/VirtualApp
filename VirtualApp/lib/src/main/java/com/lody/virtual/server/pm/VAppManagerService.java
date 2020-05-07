@@ -89,8 +89,11 @@ public class VAppManagerService implements IAppManager {
             FileUtils.deleteDir(VEnvironment.getDataUserPackageDirectory(userId, ps.packageName));
         }
     }
-
-
+    
+    /**
+     * 根据PackageSetting信息将VApp加载到内存
+     * @param setting
+     */
     synchronized void loadPackage(PackageSetting setting) {
         if (!loadPackageInnerLocked(setting)) {
             cleanUpResidualFiles(setting);

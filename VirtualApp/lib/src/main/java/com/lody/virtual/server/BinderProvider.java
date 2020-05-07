@@ -40,6 +40,10 @@ import com.lody.virtual.server.vs.VirtualStorageService;
 import mirror.android.app.job.IJobScheduler;
 
 /**
+ * BinderProvider是VA Server进程启动的入口, 在onCreate之中完成以下工作:
+ * 1.启动DaemonService保活Server进程;
+ * 2.初始化各种服务，并将这些服务注册到IPCBus，以便Client调用: 目前有10种服务
+ * 3.VAppManagerService.scanApps会将当前用户已经安装的VApp信息，加载到内存
  * @author Lody
  */
 public final class BinderProvider extends ContentProvider {

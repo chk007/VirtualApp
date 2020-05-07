@@ -41,8 +41,11 @@ public class SplashActivity extends VActivity {
             finish();
         });
     }
-
-
+    
+    
+    /**
+     * 如果VA Server进程没有启动，则通过BinderProvider启动
+     */
     private void doActionInThread() {
         if (!VirtualCore.get().isEngineLaunched()) {
             VirtualCore.get().waitForEngine();
