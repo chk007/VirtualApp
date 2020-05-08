@@ -12,6 +12,10 @@ import com.lody.virtual.server.ServiceCache;
 import com.lody.virtual.server.interfaces.IServiceFetcher;
 
 /**
+ * 该类VA Server和每个VA App进程都会有一个实例
+ *
+ * @Server
+ * @VAppClient
  * @author Lody
  */
 public class ServiceManagerNative {
@@ -30,9 +34,13 @@ public class ServiceManagerNative {
     public static final String SERVICE_DEF_AUTH = "virtual.service.BinderProvider";
     private static final String TAG = ServiceManagerNative.class.getSimpleName();
     public static String SERVICE_CP_AUTH = "virtual.service.BinderProvider";
-
+    
+    /** local service fetcher */
     private static IServiceFetcher sFetcher;
-
+    
+    /**
+     * 通过BinderProvider获取ServiceFetcher的IBinder对象;并通过asInterface转换成IServiceFetcher对象
+     */
     private static IServiceFetcher getServiceFetcher() {
         if (sFetcher == null || !sFetcher.asBinder().isBinderAlive()) {
             synchronized (ServiceManagerNative.class) {
@@ -69,7 +77,13 @@ public class ServiceManagerNative {
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * 通过IServiceFetcher获取指定Service接口的IBinder对象
+     *
+     * @param name Service Interface name
+     * @return IBinder
+     */
     public static IBinder getService(String name) {
         if (VirtualCore.get().isServerProcess()) {
             return ServiceCache.getService(name);

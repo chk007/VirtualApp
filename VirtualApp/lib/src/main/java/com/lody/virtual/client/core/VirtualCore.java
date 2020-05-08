@@ -54,6 +54,8 @@ import dalvik.system.DexFile;
 import mirror.android.app.ActivityThread;
 
 /**
+ * 所有进程都会执行该类逻辑
+ *
  * @author Lody
  * @version 3.5
  */
@@ -202,6 +204,7 @@ public final class VirtualCore {
 
                 @Override
                 public IBinder query(String serverName) {
+                    // IPCBus通过ServiceManagerNative获取VA Service的IBinder
                     return ServiceManagerNative.getService(serverName);
                 }
             });

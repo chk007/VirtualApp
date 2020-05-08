@@ -32,7 +32,10 @@ public class IPCBus {
         TransformBinder binder = new TransformBinder(serverInterface, server);
         sCache.join(serverInterface.getInterfaceName(), binder);
     }
-
+    
+    /**
+     * 通过VirtualCore.startup之中注册的IServiceCache获取指定的Service
+     */
     public static <T> T get(Class<?> interfaceClass) {
         checkInitialized();
         ServerInterface serverInterface = new ServerInterface(interfaceClass);
