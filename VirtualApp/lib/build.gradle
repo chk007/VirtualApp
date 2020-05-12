@@ -16,6 +16,12 @@ android {
         }
     }
     buildTypes {
+        // debug，用本地签名
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
