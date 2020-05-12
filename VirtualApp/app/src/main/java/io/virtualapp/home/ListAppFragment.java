@@ -29,6 +29,7 @@ import io.virtualapp.home.models.AppInfoLite;
 import io.virtualapp.widgets.DragSelectRecyclerView;
 
 /**
+ * VApp安装页面
  * @author Lody
  */
 public class ListAppFragment extends VFragment<ListAppContract.ListAppPresenter> implements ListAppContract.ListAppView {
@@ -101,6 +102,7 @@ public class ListAppFragment extends VFragment<ListAppContract.ListAppPresenter>
             mInstallButton.setEnabled(count > 0);
             mInstallButton.setText(String.format(Locale.ENGLISH, getResources().getString(R.string.install_d), count));
         });
+        // 安装按钮点击事件：触发安装操作
         mInstallButton.setOnClickListener(v -> {
             Integer[] selectedIndices = mAdapter.getSelectedIndices();
             ArrayList<AppInfoLite> dataList = new ArrayList<AppInfoLite>(selectedIndices.length);
@@ -108,6 +110,14 @@ public class ListAppFragment extends VFragment<ListAppContract.ListAppPresenter>
                 AppInfo info = mAdapter.getItem(index);
                 dataList.add(new AppInfoLite(info.packageName, info.path, info.fastOpen));
             }
+            /**
+             * 1. 结束当前的ListAppActivity，并通过setResult接口通知HomeActivity处理后续Install流程;
+             * 2. setResult只是将resultCode和resultData设置到当前ListAppActivity之中
+             * 3. getActivity().finish()操作通知AMS结束当前进程，并将StartActivity Result传递给启动当前Activity的HomeActivity
+             * 4. AMS通过向HomeActivity所在的ActivityThread发送SEND_RESULT消息;
+             * 5. ActivityThread.handleSendResult最终会调用Activity.dispatchActivityResult将消息分发给HomeActivity，
+             *    进而调用HomeActivity.onActivityResult处理消息
+              */
             Intent data = new Intent();
             data.putParcelableArrayListExtra(VCommends.EXTRA_APP_INFO_LIST, dataList);
             getActivity().setResult(Activity.RESULT_OK, data);

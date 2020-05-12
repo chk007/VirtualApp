@@ -145,7 +145,24 @@ public class VAppManagerService implements IAppManager {
     public InstallResult installPackage(String path, int flags) {
         return installPackage(path, flags, true);
     }
-
+    
+    /**
+     * 根据Install Strategy完成具体的Install操作
+     * @Server 运行于Server进程
+     * 主要操作有：
+     * 1. 解析VApp APK文件，获取VPackage对象
+     * 2. 检查是否需要升级VApp：如果需要升级VApp,则将旧版本的VApp数据、ODex文件删除，并杀掉对应的进程
+     * 3. 利用系统NativeLibraryHelper从VApp的Apk文件中抽取native library文件
+     * 4. dependSystem表示是否依赖于系统进行VApp的安装（如果依赖于系统，则会复用/data/app/${VApp}/base.apk文件
+     * 5. 创建一个PackageSetting对象保存VApp的关键信息，并将该对象缓存在PackageCacheManager之中
+     * 6. 注册VApp的静态广播
+     * 7. 通知安装VApp的消息（该过程是一个跨进程的异步回调）
+     *
+     * @param path VApp在系统中的路径 path = /data/app/${VApp_package}/base.apk
+     * @param flags InstallStrategy
+     * @param notify 是否通知安装结果
+     * @return 返回安装结果
+     */
     public synchronized InstallResult installPackage(String path, int flags, boolean notify) {
         long installTime = System.currentTimeMillis();
         if (path == null) {
@@ -157,6 +174,7 @@ public class VAppManagerService implements IAppManager {
         }
         VPackage pkg = null;
         try {
+            // 从VApp的Apk文件之中解析得到VPackage对象
             pkg = PackageParserEx.parsePackage(packageFile);
         } catch (Throwable e) {
             e.printStackTrace();
@@ -179,9 +197,15 @@ public class VAppManagerService implements IAppManager {
             }
             res.isUpdate = true;
         }
+        
+        /**
+         * 1. appDir = /data/data/${host_package}/virtual/data/app/${VApp}/
+         * 2. libDir = /data/data/${host_package}/virtual/data/app/${VApp}/lib
+         */
         File appDir = VEnvironment.getDataAppPackageDirectory(pkg.packageName);
         File libDir = new File(appDir, "lib");
         if (res.isUpdate) {
+            // 如果需要更新原有的VApp，则删除lib, oDex文件，并杀掉与当前VApp关联的进程
             FileUtils.deleteDir(libDir);
             VEnvironment.getOdexFile(pkg.packageName).delete();
             VActivityManagerService.get().killAppByPkg(pkg.packageName, VUserHandle.USER_ALL);
@@ -195,7 +219,11 @@ public class VAppManagerService implements IAppManager {
         if (existSetting != null && existSetting.dependSystem) {
             dependSystem = false;
         }
-
+    
+        /**
+         * 利用系统NativeLibraryHelper.copyNativeBinaries函数, 将VApp APK文件中的native library
+         * 复制到/data/data/${host_package}/virtual/data/app/${VApp_package}/lib目录
+         */
         NativeLibraryHelperCompat.copyNativeBinaries(new File(path), libDir);
         if (!dependSystem) {
             File privatePackageFile = new File(appDir, "base.apk");
@@ -206,6 +234,7 @@ public class VAppManagerService implements IAppManager {
                 VLog.w(TAG, "Warning: unable to delete file : " + privatePackageFile.getPath());
             }
             try {
+                // 将Apk文件保存在/data/data/${host_package}/virtual/data/app/${VApp_package}/base.apk
                 FileUtils.copyFile(packageFile, privatePackageFile);
             } catch (IOException e) {
                 privatePackageFile.delete();
@@ -434,7 +463,12 @@ public class VAppManagerService implements IAppManager {
         }
         return setting.isInstalled(userId);
     }
-
+    
+    /**
+     * 通知VApp安装消息(跨进程异步回调)
+     * @param setting VApp package setting
+     * @param userId user id
+     */
     private void notifyAppInstalled(PackageSetting setting, int userId) {
         final String pkg = setting.packageName;
         int N = mRemoteCallbackList.beginBroadcast();

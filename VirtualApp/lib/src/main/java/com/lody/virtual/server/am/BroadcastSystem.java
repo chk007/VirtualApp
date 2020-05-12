@@ -141,7 +141,21 @@ public class BroadcastSystem {
             }
         }
     }
-
+    
+    /**
+     * 动态注册VApp的静态Receiver，实现原理如下：
+     * 1. 根据VApp原有的Receiver信息，构造一个StaticBroadcastReceiver对象，并将该Receiver注册到AMS中;
+     *    VA中，其他的组件可以通过Stub IntentFilter向该Receiver发送消息
+     * 2. 将原有Receiver的IntentFilter信息，与Stub Receiver关联起来;
+     *    如果系统中有相关的IntentFilter消息，则会通知该Receiver
+     *
+     * 系统动态注册Receiver流程如下：
+     * 1.Context.registerReceiver(***)-->ContextImpl.registerReceiverInternal(***)-->AMS.registerReceiver(***)
+     * 2.ContextImpl.registerReceiverInternal会根据Receiver信息，构造一个LoadedApk.ReceiverDispatcher.IIntentReceiver对象，
+     *  该对象是一个可序列化的对象，然后将该对象传递给AMS。AMS在有Receiver的消息时，会通过IIntentReceiver通知到当前的Receiver去处理消息
+     *
+     * @param p VPackage
+     */
     public void startApp(VPackage p) {
         PackageSetting setting = (PackageSetting) p.mExtras;
         for (VPackage.ActivityComponent receiver : p.receivers) {
@@ -151,11 +165,13 @@ public class BroadcastSystem {
                 receivers = new ArrayList<>();
                 mReceivers.put(p.packageName, receivers);
             }
+            // 构造一个Stub BroadcastReceiver，并将该Receiver注册到系统
             String componentAction = String.format("_VA_%s_%s", info.packageName, info.name);
             IntentFilter componentFilter = new IntentFilter(componentAction);
             BroadcastReceiver r = new StaticBroadcastReceiver(setting.appId, info, componentFilter);
             mContext.registerReceiver(r, componentFilter, null, mScheduler);
             receivers.add(r);
+            // 将Stub Receiver于系统BroadcastReceiver事件绑定起来
             for (VPackage.ActivityIntentInfo ci : receiver.intents) {
                 IntentFilter cloneFilter = new IntentFilter(ci.filter);
                 SpecialComponentList.protectIntentFilter(cloneFilter);

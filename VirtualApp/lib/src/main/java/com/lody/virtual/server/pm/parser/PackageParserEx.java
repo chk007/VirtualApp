@@ -46,7 +46,17 @@ public class PackageParserEx {
     private static final String TAG = PackageParserEx.class.getSimpleName();
 
     private static final ArrayMap<String, String[]> sSharedLibCache = new ArrayMap<>();
-
+    
+    /**
+     * 从VApp的Apk文件之中解析得到VPackage对象，本函数完成的操作有：
+     * 1. 利用系统的PackageParser解析Apk File，获得PackageParser对象
+     * 2. 获取Apk的签名信息
+     * 3. 从PackageParser.Package中获取信息，并封装得到一个VPackage对象
+     *
+     * @param packageFile Apk File
+     * @return
+     * @throws Throwable
+     */
     public static VPackage parsePackage(File packageFile) throws Throwable {
         PackageParser parser = PackageParserCompat.createParser(packageFile);
         PackageParser.Package p = PackageParserCompat.parsePackage(parser, packageFile, 0);
@@ -141,7 +151,11 @@ public class PackageParserEx {
             }
         }
     }
-
+    
+    /**
+     * 利用PackageParser.Package封装得到一个VPackage对象
+     * @return VPackage
+     */
     private static VPackage buildPackageCache(PackageParser.Package p) {
         VPackage cache = new VPackage();
         cache.activities = new ArrayList<>(p.activities.size());

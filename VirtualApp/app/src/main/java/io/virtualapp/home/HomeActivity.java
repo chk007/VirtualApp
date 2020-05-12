@@ -329,6 +329,7 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        // 处理ListAppActivity返回的结果
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && data != null) {
             List<AppInfoLite> appList = data.getParcelableArrayListExtra(VCommends.EXTRA_APP_INFO_LIST);

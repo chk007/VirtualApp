@@ -86,6 +86,7 @@ class HomePresenterImpl implements HomeContract.HomePresenter {
         }
         AddResult addResult = new AddResult();
         VUiKit.defer().when(() -> {
+            // 根据VApp包名先从Server端查看VApp的安装信息
             InstalledAppInfo installedAppInfo = VirtualCore.get().getInstalledAppInfo(info.packageName, 0);
             addResult.justEnableHidden = installedAppInfo != null;
             if (addResult.justEnableHidden) {
@@ -116,14 +117,17 @@ class HomePresenterImpl implements HomeContract.HomePresenter {
                     throw new IllegalStateException();
                 }
             } else {
+                // VApp之前没有安装过，则进行全新安装
                 InstallResult res = mRepo.addVirtualApp(info);
                 if (!res.isSuccess) {
                     throw new IllegalStateException();
                 }
             }
         }).then((res) -> {
+            // 获取PackageAppData信息
             addResult.appData = PackageAppDataStorage.get().acquire(info.packageName);
         }).done(res -> {
+            // 同一个VApp是否安装了多个版本
             boolean multipleVersion = addResult.justEnableHidden && addResult.userId != 0;
             if (!multipleVersion) {
                 PackageAppData data = addResult.appData;
@@ -138,8 +142,13 @@ class HomePresenterImpl implements HomeContract.HomePresenter {
             }
         });
     }
-
-
+    
+    /**
+     * 触发Dex Opt过程：
+     * 1. 在Java层调用DexFile.loadDex(***)，该方法会构造一个DexFile对象
+     * 2. 在new DexFile(***)的时候，会最终在JNI层调用openDexFileNative对应的native方法，去构建一个DexFile对象.
+     * 3. 在JNI层（C层），DexFile对象与ODex文件对应
+     */
     private void handleOptApp(AppData data, String packageName, boolean needOpt) {
         VUiKit.defer().when(() -> {
             long time = System.currentTimeMillis();

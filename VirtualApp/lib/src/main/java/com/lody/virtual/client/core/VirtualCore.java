@@ -351,7 +351,14 @@ public final class VirtualCore {
     public boolean isAppRunning(String packageName, int userId) {
         return VActivityManager.get().isAppRunning(packageName, userId);
     }
-
+    
+    /**
+     * 请求Server进程的IAppManagerService完成VApp安装
+     *
+     * @param apkPath VApp apk path
+     * @param flags install type(new install/update)
+     * @return Install result
+     */
     public InstallResult installPackage(String apkPath, int flags) {
         try {
             return getService().installPackage(apkPath, flags);
@@ -659,7 +666,12 @@ public final class VirtualCore {
             return VirtualRuntime.crash(e);
         }
     }
-
+    
+    /**
+     * 设定VApp安装请求Listener
+     * @Server 该操作在Server进程进行
+     * @param listener AppRequestListener
+     */
     public void setAppRequestListener(final AppRequestListener listener) {
         IAppRequestListener inner = new IAppRequestListener.Stub() {
             @Override
@@ -683,6 +695,7 @@ public final class VirtualCore {
             }
         };
         try {
+            // 向Server进程注册可序列化的IAppRequestListener
             getService().setAppRequestListener(inner);
         } catch (RemoteException e) {
             e.printStackTrace();
@@ -704,7 +717,13 @@ public final class VirtualCore {
             e.printStackTrace();
         }
     }
-
+    
+    /**
+     * 以某用户的名义安装VApp
+     * @param userId user id
+     * @param packageName VApp package name
+     * @return
+     */
     public boolean installPackageAsUser(int userId, String packageName) {
         try {
             return getService().installPackageAsUser(userId, packageName);
@@ -731,7 +750,12 @@ public final class VirtualCore {
 
     public abstract static class PackageObserver extends IPackageObserver.Stub {
     }
-
+    
+    /**
+     * 1. 注册IPackageObserver(如果发生VApp的安装或者卸载操作时，会通知该IPackageObserver)
+     * 2. 该回调是一个跨进程异步调用过程
+     * @param observer listener
+     */
     public void registerObserver(IPackageObserver observer) {
         try {
             getService().registerObserver(observer);
@@ -785,8 +809,14 @@ public final class VirtualCore {
     }
 
     public interface AppRequestListener {
+        /**
+         * 当收到VApp Install请求的操作
+         */
         void onRequestInstall(String path);
-
+    
+        /**
+         * 当收到VApp uninstall请求的操作
+         */
         void onRequestUninstall(String pkg);
     }
 

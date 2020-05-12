@@ -69,6 +69,7 @@ public class VApp extends MultiDexApplication {
 
             @Override
             public void onServerProcess() {
+                // 注册AppRequestListener
                 virtualCore.setAppRequestListener(new MyAppRequestListener(VApp.this));
                 virtualCore.addVisibleOutsidePackage("com.tencent.mobileqq");
                 virtualCore.addVisibleOutsidePackage("com.tencent.mobileqqi");
