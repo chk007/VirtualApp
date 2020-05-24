@@ -405,6 +405,11 @@ public final class VirtualCore {
                 && getLaunchIntent(packageName, info.getInstalledUsers()[0]) != null;
     }
 
+    /**
+     * 3.1 获取启动某个VApp的Intent
+     * 1. 首先利用VPackageManager从Server端尝试获取对应的Intent: ACTION_MAIN类型的Activity
+     * 2. 如果没有获取到指定category的Intent，则返回该VApp的Launcher Intent
+     */
     public Intent getLaunchIntent(String packageName, int userId) {
         VPackageManager pm = VPackageManager.get();
         Intent intentToResolve = new Intent(Intent.ACTION_MAIN);
@@ -585,6 +590,13 @@ public final class VirtualCore {
         throw new Resources.NotFoundException(pkg);
     }
 
+    /**
+     * 2.2.1 解析VApp Launch Intent信息
+     *
+     * 2.2.1.1 根据VApp的Launch Intent和User Id，利用VPackageManager查询得到Activity Info
+     * 2.2.1.2 将target Activity信息分装成一个ComponentName，并设置到Launch Intent之中，并随着Launch Intent透传
+     * @return
+     */
     public synchronized ActivityInfo resolveActivityInfo(Intent intent, int userId) {
         ActivityInfo activityInfo = null;
         if (intent.getComponent() == null) {

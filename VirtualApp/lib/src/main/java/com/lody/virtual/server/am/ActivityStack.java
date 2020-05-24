@@ -77,6 +77,9 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
     }
 
 
+    /**
+     * 3.4.2.2 给TargetActivity分发New Intent事件
+     */
     private void deliverNewIntentLocked(ActivityRecord sourceRecord, ActivityRecord targetRecord, Intent intent) {
         if (targetRecord == null) {
             return;
@@ -91,6 +94,10 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     * 3.3.1 根据TaskAffinity和User id选定Task
+     * @return
+     */
     private TaskRecord findTaskByAffinityLocked(int userId, String affinity) {
         for (int i = 0; i < this.mHistory.size(); i++) {
             TaskRecord r = this.mHistory.valueAt(i);
@@ -101,6 +108,9 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         return null;
     }
 
+    /**
+     * 3.3.2 选定Task RootActivity与TargetActivity相同的Task
+     */
     private TaskRecord findTaskByIntentLocked(int userId, Intent intent) {
         for (int i = 0; i < this.mHistory.size(); i++) {
             TaskRecord r = this.mHistory.valueAt(i);
@@ -265,15 +275,28 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
     }
 
 
+    /**
+     * 3. ActivityStack执行startActivityLocked操作
+     * 3.1 根据Token信息查询得到发起startActivity请求的ActivityRecord
+     * 3.2 从Source ActivityRecord中获取TaskRecord
+     * 3.3 根据Intent flag和Source和Target的LaunchMode等信息，决定在Target Activity所在的Task信息，
+     *     同时得到如何处理选定Task之中Activity的信息
+     * 3.4 根据选定的Task启动TargetActivity
+     * @return
+     */
     int startActivityLocked(int userId, Intent intent, ActivityInfo info, IBinder resultTo, Bundle options,
                             String resultWho, int requestCode) {
         optimizeTasksLocked();
 
         Intent destIntent;
+        // 3.1 获取Source ActivityRecord
         ActivityRecord sourceRecord = findActivityByToken(userId, resultTo);
+        // 3.2 获取Source Activity的TaskRecord
         TaskRecord sourceTask = sourceRecord != null ? sourceRecord.task : null;
 
+        // 用于记录在哪个Task启动Target Activity
         ReuseTarget reuseTarget = ReuseTarget.CURRENT;
+        // 用于记录是如何处理Target Task之中其他的Activity
         ClearTarget clearTarget = ClearTarget.NOTHING;
         boolean clearTop = containFlags(intent, Intent.FLAG_ACTIVITY_CLEAR_TOP);
         boolean clearTask = containFlags(intent, Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -281,20 +304,29 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         if (intent.getComponent() == null) {
             intent.setComponent(new ComponentName(info.packageName, info.name));
         }
+
+        // 如果Source Activity是SingleInstance的，则Intent flag强制添加NEW_TASK
         if (sourceRecord != null && sourceRecord.launchMode == LAUNCH_SINGLE_INSTANCE) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
+        // 根据FIntent flag之中是否包含LAG_ACTIVITY_CLEAR_TOP，修正flag和ClearTarget
         if (clearTop) {
             removeFlags(intent, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            // 清理Target Task中的Top Activity
             clearTarget = ClearTarget.TOP;
         }
+
+        // 修正Intent flag和ClearTarget
         if (clearTask) {
             if (containFlags(intent, Intent.FLAG_ACTIVITY_NEW_TASK)) {
+                // 清理Target Task
                 clearTarget = ClearTarget.TASK;
             } else {
                 removeFlags(intent, Intent.FLAG_ACTIVITY_CLEAR_TASK);
             }
         }
+
+        // 根据Document LaunchMode设定ClearTarget和ReuseTarget对象
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             switch (info.documentLaunchMode) {
                 case ActivityInfo.DOCUMENT_LAUNCH_INTO_EXISTING:
@@ -302,33 +334,40 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
                     reuseTarget = ReuseTarget.DOCUMENT;
                     break;
                 case ActivityInfo.DOCUMENT_LAUNCH_ALWAYS:
+                    // 如果documentLaunchMode设定为打开新的Document，则在新的Task中打开
                     reuseTarget = ReuseTarget.MULTIPLE;
                     break;
             }
         }
         boolean singleTop = false;
 
+        // 根据Target Activity的LaunchMode修正ReuseTarget的值
         switch (info.launchMode) {
-            case LAUNCH_SINGLE_TOP: {
+            case LAUNCH_SINGLE_TOP: { // LaunchMode是SingleTop
                 singleTop = true;
                 if (containFlags(intent, Intent.FLAG_ACTIVITY_NEW_TASK)) {
+                    // 1. 如果同时具备NEW_TASK和MULTIPLE_TASK，则在新的Task启动TargetActivity
+                    // 2. 如果只是具有NEW_TASK，则根据TaskAffinity信息启动TargetActivity
                     reuseTarget = containFlags(intent, Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                             ? ReuseTarget.MULTIPLE
                             : ReuseTarget.AFFINITY;
                 }
             }
             break;
-            case LAUNCH_SINGLE_TASK: {
+            case LAUNCH_SINGLE_TASK: { // LaunchMode是SingleTask
                 clearTop = false;
                 clearTarget = ClearTarget.TOP;
+                // 1. Intent flag有MULTIPLE_TASK，则强制在新的Task启动TargetActivity
+                // 2. SingleTask类型，默认根据Affinity来选定Task
                 reuseTarget = containFlags(intent, Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                         ? ReuseTarget.MULTIPLE
                         : ReuseTarget.AFFINITY;
             }
             break;
-            case LAUNCH_SINGLE_INSTANCE: {
+            case LAUNCH_SINGLE_INSTANCE: { // LaunchMode为SingleInstance
                 clearTop = false;
                 clearTarget = ClearTarget.TOP;
+                // 如果是SingleInstance类型的LaunchMode，则根据TaskAffinity选定Task，保证该Activity只有一个实例
                 reuseTarget = ReuseTarget.AFFINITY;
             }
             break;
@@ -345,19 +384,23 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
             }
         }
         if (sourceTask == null && reuseTarget == ReuseTarget.CURRENT) {
+            // 本打算使用Source Activity的Task，但是SourceTask为null，只能根据TaskAffinity选定Task
             reuseTarget = ReuseTarget.AFFINITY;
         }
 
+        // 获取Target Activity的TaskAffinity信息
         String affinity = ComponentUtils.getTaskAffinity(info);
         TaskRecord reuseTask = null;
         switch (reuseTarget) {
             case AFFINITY:
+                // 根据Target Activity的TaskAffinity信息，确定Task
                 reuseTask = findTaskByAffinityLocked(userId, affinity);
                 break;
             case DOCUMENT:
                 reuseTask = findTaskByIntentLocked(userId, intent);
                 break;
             case CURRENT:
+                // 在当前的Task之中启动Target Activity
                 reuseTask = sourceTask;
                 break;
             default:
@@ -365,10 +408,11 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
 
         boolean taskMarked = false;
-        if (reuseTask == null) {
+        if (reuseTask == null) { // 3.4.1 在新的Task之中启动Target Activity
             startActivityInNewTaskLocked(userId, intent, info, options);
-        } else {
+        } else { // 3.4.2 利用现存的Task启动TargetActivity
             boolean delivered = false;
+            // 3.4.2.1 将选定的Task移动到最前台
             mAM.moveTaskToFront(reuseTask.taskId, 0);
             boolean startTaskToFront = !clearTask && !clearTop && ComponentUtils.isSameIntent(intent, reuseTask.taskRoot);
 
@@ -380,19 +424,23 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
                 }
                 // Target activity is on top
                 if (topRecord != null && !topRecord.marked && topRecord.component.equals(intent.getComponent())) {
+                    // 3.4.2.2 如果在Task中，TargetActivity正处于Top，而且要求TargetActivity是Single Top的，则触发TargetActivity的New Intent回调
                     deliverNewIntentLocked(sourceRecord, topRecord, intent);
                     delivered = true;
                 }
             }
             if (taskMarked) {
                 synchronized (mHistory) {
+                    // 3.4.2.3 清理Task的Top Activity
                     scheduleFinishMarkedActivityLocked();
                 }
             }
             if (!startTaskToFront) {
                 if (!delivered) {
+                    // 3.4.2.4 启动TargetActivity所在的进程
                     destIntent = startActivityProcess(userId, sourceRecord, intent, info);
                     if (destIntent != null) {
+                        // 3.4.2.5 在现有的Task之中，启动destIntent（该Intent是一个Stub Intent）
                         startActivityFromSourceTask(reuseTask, destIntent, info, resultWho, requestCode, options);
                     }
                 }
@@ -401,6 +449,9 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         return 0;
     }
 
+    /**
+     * 3.4 在新的Activity Task之中，启动TargetActivity
+     */
     private void startActivityInNewTaskLocked(int userId, Intent intent, ActivityInfo info, Bundle options) {
         Intent destIntent = startActivityProcess(userId, null, intent, info);
         if (destIntent != null) {
@@ -423,6 +474,9 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     * 3.4.2.3 结束Task的Top Activity
+     */
     private void scheduleFinishMarkedActivityLocked() {
         int N = mHistory.size();
         while (N-- > 0) {
@@ -445,11 +499,19 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     * 3.4.2.5 在现有的Task之中，启动Target Activity，主要工作有：
+     * 3.4.2.5.1 如果指定Task的TopActivity不是null，则启动TopActivity的进程；
+     * 3.4.2.5.2 然后启动TargetActivity，并将结果通知给TopActivity
+     */
     private void startActivityFromSourceTask(TaskRecord task, Intent intent, ActivityInfo info, String resultWho,
                                              int requestCode, Bundle options) {
+        // 获得TopActivity
         ActivityRecord top = task.activities.isEmpty() ? null : task.activities.get(task.activities.size() - 1);
         if (top != null) {
+            // 3.4.2.5.1 如需要则启动TopActivity所在的进程
             if (startActivityProcess(task.userId, top, intent, info) != null) {
+                // 3.4.2.5.2 启动TargetActivity，并将结果通知给TopActivity
                 realStartActivityLocked(top.token, intent, resultWho, requestCode, options);
             }
         }
@@ -479,8 +541,12 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
                 (Object[]) args);
     }
 
+    /**
+     * 3.4.2.5.2 启动TargetActivity，并将结果通知给TopActivity
+     */
     private void realStartActivityLocked(IBinder resultTo, Intent intent, String resultWho, int requestCode,
                                          Bundle options) {
+        // 获取startActivity的参数列表
         Class<?>[] types = mirror.android.app.IActivityManager.startActivity.paramList();
         Object[] args = new Object[types.length];
         if (types[0] == IApplicationThread.TYPE) {
@@ -493,6 +559,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         int resultWhoIndex = resultToIndex + 1;
         int requestCodeIndex = resultToIndex + 2;
 
+        // 设定参数
         args[intentIndex] = intent;
         args[resultToIndex] = resultTo;
         args[resultWhoIndex] = resultWho;
@@ -506,10 +573,16 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
         ClassUtils.fixArgs(types, args);
 
+        // 启动Stub Activity
         mirror.android.app.IActivityManager.startActivity.call(ActivityManagerNative.getDefault.call(),
                 (Object[]) args);
     }
 
+    /**
+     * 3.4.2.4.2 根据Target Activity的信息，选定一个Stub Activity
+     * 在选定StubActivity的时候，主要考虑两个信息：Window是否是Dialog样式、vpid
+     * @return
+     */
     private String fetchStubActivity(int vpid, ActivityInfo targetInfo) {
 
         boolean isFloating = false;
@@ -542,6 +615,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
             e.printStackTrace();
         }
 
+        // TargetActivity是否是Dialog样式
         boolean isDialogStyle = isFloating || isTranslucent || showWallpaper;
         if (isDialogStyle) {
             return VASettings.getStubDialogName(vpid);
@@ -550,12 +624,19 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     *  3.4.2.4 按需启动进程，并构造一个启动Target VApp的Intent
+     * @return
+     */
     private Intent startActivityProcess(int userId, ActivityRecord sourceRecord, Intent intent, ActivityInfo info) {
         intent = new Intent(intent);
+        // 3.4.2.4.1 如果需要则启动Target App所在的进程
         ProcessRecord targetApp = mService.startProcessIfNeedLocked(info.processName, userId, info.packageName);
         if (targetApp == null) {
             return null;
         }
+
+        // 3.4.2.4.2 根据Target Activity信息，选定一个Stub Activity
         Intent targetIntent = new Intent();
         targetIntent.setClassName(VirtualCore.get().getHostPkg(), fetchStubActivity(targetApp.vpid, info));
         ComponentName component = intent.getComponent();
@@ -563,6 +644,8 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
             component = ComponentUtils.toComponentName(info);
         }
         targetIntent.setType(component.flattenToString());
+
+        // 3.4.2.4.3 构造一个StubActivityRecord对象，存放Stub Activity信息，并将TargetIntent和Stub Activity关联
         StubActivityRecord saveInstance = new StubActivityRecord(intent, info,
                 sourceRecord != null ? sourceRecord.component : null, userId);
         saveInstance.saveToIntent(targetIntent);
@@ -687,6 +770,12 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     * NOTHING : do nothing
+     * SPEC_ACTIVITY :
+     * TASK：清理选定Task之中所有的Activity
+     * TOP: 清理选定Task的Top Activity
+     */
     private enum ClearTarget {
         NOTHING,
         SPEC_ACTIVITY,
@@ -704,6 +793,12 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
         }
     }
 
+    /**
+     * CURRENT: 使用source Activity的Task
+     * AFFINITY：根据Target Activity的TaskAffinity属性来选择Task
+     * DOCUMENT：根据Target Activity的documentMode来选择Task
+     * MULTIPLE：在新的Task之中打开Target Activity
+     */
     private enum ReuseTarget {
         CURRENT, AFFINITY, DOCUMENT, MULTIPLE
     }

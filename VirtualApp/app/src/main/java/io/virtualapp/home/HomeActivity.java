@@ -181,6 +181,7 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
                     onAddAppButtonClick();
                 }
                 mLaunchpadAdapter.notifyItemChanged(pos);
+                // 1. 点击启动VApp
                 mPresenter.launchApp(data);
             }
         });

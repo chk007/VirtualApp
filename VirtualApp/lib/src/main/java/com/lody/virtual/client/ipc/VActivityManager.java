@@ -53,6 +53,10 @@ public class VActivityManager {
     }
 
 
+    /**
+     * 2.2.2 将Launch Intent和target ActivityInfo信息作为参数，向Server发起startActivity请求
+     * @return
+     */
     public int startActivity(Intent intent, ActivityInfo info, IBinder resultTo, Bundle options, String resultWho, int requestCode, int userId) {
         try {
             return getService().startActivity(intent, info, resultTo, options, resultWho, requestCode, userId);
@@ -69,6 +73,14 @@ public class VActivityManager {
         }
     }
 
+    /**
+     * 2.2 从Server进程，先查询intent对应的ActivityInfo信息，然后根据ActivityInfo启动Activity
+     * 2.2.1 根据Intent解析得到Target ActivityInfo
+     * 2.2.2 根据intent和Target ActivityInfo启动Activity
+     * @param intent VApp Launch Intent
+     * @param userId user id
+     * @return 返回result code
+     */
     public int startActivity(Intent intent, int userId) {
         if (userId < 0) {
             return ActivityManagerCompat.START_NOT_CURRENT_USER_ACTIVITY;

@@ -124,6 +124,10 @@ public class VPackageManager {
         }
     }
 
+    /**
+     * 2.2.1.1 根据Component获取Target ActivityInfo
+     * @return
+     */
     public ActivityInfo getActivityInfo(ComponentName componentName, int flags, int userId) {
         try {
             return getService().getActivityInfo(componentName, flags, userId);

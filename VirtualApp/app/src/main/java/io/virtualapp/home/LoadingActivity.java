@@ -31,6 +31,9 @@ public class LoadingActivity extends VActivity {
     private PackageAppData appModel;
     private EatBeansView loadingView;
 
+    /**
+     * 1.2 获取VApp的Launch Intent，并将该Intent作为参数传递给Server进程
+     */
     public static void launch(Context context, String packageName, int userId) {
         Intent intent = VirtualCore.get().getLaunchIntent(packageName, userId);
         if (intent != null) {
@@ -63,11 +66,13 @@ public class LoadingActivity extends VActivity {
         VUiKit.defer().when(() -> {
             if (!appModel.fastOpen) {
                 try {
+                    // 2.1 加载VApp的DexFile（如果没有进行过Dex Opt过程，则触发Dex Opt）
                     VirtualCore.get().preOpt(appModel.packageName);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
+            // 2.2 通过VActivityManager向Server端发送启动VApp请求：将VApp的Launch Intent和User Id透传给Server
             VActivityManager.get().startActivity(intent, userId);
         });
 

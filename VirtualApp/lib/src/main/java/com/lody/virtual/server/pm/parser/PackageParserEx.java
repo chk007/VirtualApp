@@ -245,6 +245,9 @@ public class PackageParserEx {
         }
     }
 
+    /**
+     * 2.2.1.1.3.2.3 根据User Id和ROM信息，设置ApplicationInfo的data dir相关成员变量
+     */
     private static void initApplicationAsUser(ApplicationInfo ai, int userId) {
         ai.dataDir = VEnvironment.getDataUserPackageDirectory(userId, ai.packageName).getPath();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -402,6 +405,12 @@ public class PackageParserEx {
         return pi;
     }
 
+    /**
+     * 2.2.1.1.3.2 构造一个新的ApplicationInfo对象
+     * 2.2.1.1.3.2.1 根据VPackage之中的ApplicationInfo构建一个新的ApplicationInfo
+     * 2.2.1.1.3.2.2 根据flag决定是否添加META_DATA信息
+     * 2.2.1.1.3.2.3 根据User Id以及Android ROM信息，初始化ApplicationInfo的目录相关成员变量
+     */
     public static ApplicationInfo generateApplicationInfo(VPackage p, int flags,
                                                           PackageUserState state, int userId) {
         if (p == null) return null;
@@ -419,6 +428,12 @@ public class PackageParserEx {
     }
 
 
+    /**
+     * 2.2.1.1.3 构造一个ActivityInfo
+     * 2.2.1.1.3.1 利用VPackage.ActivityComponent之中缓存的ActivityInfo对象创建一个新的ActivityInfo
+     * 2.2.1.1.3.2 构造一个ApplicationInfo对象，并将该对象设定到ActivityInfo之中
+     * @return
+     */
     public static ActivityInfo generateActivityInfo(VPackage.ActivityComponent a, int flags,
                                                     PackageUserState state, int userId) {
         if (a == null) return null;

@@ -59,6 +59,7 @@ class HomePresenterImpl implements HomeContract.HomePresenter {
             if (data instanceof PackageAppData) {
                 PackageAppData appData = (PackageAppData) data;
                 appData.isFirstOpen = false;
+                // 1.1 启动LoadingActivity
                 LoadingActivity.launch(mActivity, appData.packageName, 0);
             } else if (data instanceof MultiplePackageAppData) {
                 MultiplePackageAppData multipleData = (MultiplePackageAppData) data;

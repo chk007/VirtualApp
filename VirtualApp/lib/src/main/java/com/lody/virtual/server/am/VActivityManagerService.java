@@ -677,6 +677,11 @@ public class VActivityManagerService implements IActivityManager {
     }
 
 
+    /**
+     * 将ProcessRecord和IVClient对象关联
+     * 1. 将IVClient设定到ProcessRecord之中
+     * 2. 在clientBinder上注册DeathRecipient Listener
+     */
     private void attachClient(int pid, final IBinder clientBinder) {
         final IVClient client = IVClient.Stub.asInterface(clientBinder);
         if (client == null) {
@@ -747,30 +752,44 @@ public class VActivityManagerService implements IActivityManager {
         }
     }
 
+    /**
+     * 3.4.2.4.1 如果需要则启动一个进程：根据进程名称和VApp的package Name选定Target Process，
+     * 如果Target Process没有启动，则启动该Process
+     *
+     * @return
+     */
     ProcessRecord startProcessIfNeedLocked(String processName, int userId, String packageName) {
         if (VActivityManagerService.get().getFreeStubCount() < 3) {
             // run GC
             killAllApps();
         }
+        // 3.4.2.4.1.1 利用PackageSetting信息获取ApplicationInfo
         PackageSetting ps = PackageCacheManager.getSetting(packageName);
         ApplicationInfo info = VPackageManagerService.get().getApplicationInfo(packageName, 0, userId);
         if (ps == null || info == null) {
             return null;
         }
         if (!ps.isLaunched(userId)) {
+            // 3.4.2.4.1.2 利用广播启动一个进程
             sendFirstLaunchBroadcast(ps, userId);
             ps.setLaunched(userId, true);
             VAppManagerService.get().savePersistenceData();
         }
+
+        // 如果缓存了当前app的ProcessRecord信息且该进程还存活，则返回该ProcessRecord
         int uid = VUserHandle.getUid(userId, ps.appId);
         ProcessRecord app = mProcessNames.get(processName, uid);
         if (app != null && app.client.asBinder().isBinderAlive()) {
             return app;
         }
+
+        // 3.4.2.4.1.3 如果没有查到该进程的缓存，重新选定一个空闲的Stub Process
         int vpid = queryFreeStubProcessLocked();
         if (vpid == -1) {
             return null;
         }
+
+        // 3.4.2.4.1.4 启动选定的Stub Process
         app = performStartProcessLocked(uid, vpid, info, processName);
         if (app != null) {
             app.pkgList.add(info.packageName);
@@ -798,6 +817,13 @@ public class VActivityManagerService implements IActivityManager {
         return Process.myUid();
     }
 
+    /**
+     * 3.4.2.4.1.4 启动选定的Stub Process
+     * 整体过程是：
+     * 1. 先根据参数构造一个ProcessRecord对象;
+     * 2. 通过Provider启动该Stub进程
+     * 3. 将pid和Client Binder对象绑定起来
+     */
     private ProcessRecord performStartProcessLocked(int vuid, int vpid, ApplicationInfo info, String processName) {
         ProcessRecord app = new ProcessRecord(info, processName, vuid, vpid);
         Bundle extras = new Bundle();
@@ -815,6 +841,9 @@ public class VActivityManagerService implements IActivityManager {
         return app;
     }
 
+    /**
+     * 3.4.2.4.1.3 如果没有查到该进程的缓存，重新选定一个空闲的Stub Process
+     */
     private int queryFreeStubProcessLocked() {
         for (int vpid = 0; vpid < VASettings.STUB_COUNT; vpid++) {
             int N = mPidsSelfLocked.size();

@@ -280,6 +280,12 @@ public class VPackageManagerService implements IPackageManager {
         }
     }
 
+    /**
+     * 2.2.1.1 Server进程，VPackageManagerService根据ComponentName查询ActivityInfo
+     * 2.2.1.1.1 先根据VApp的Package查询得到VPackage对象；
+     * 2.2.1.1.2 从VPackage对象中得到VPackage.ActivityComponent
+     * 2.2.1.1.3 根据VPackage.ActivityComponent和PackageSettings信息，构造一个ActivityInfo对象
+     */
     @Override
     public ActivityInfo getActivityInfo(ComponentName component, int flags, int userId) {
         checkUserId(userId);
@@ -454,7 +460,7 @@ public class VPackageManagerService implements IPackageManager {
             return list;
         }
 
-        // reader
+        // reader : 如果无法从Intent之中获取ComponentName，则从VActivityManagerService中查询
         synchronized (mPackages) {
             final String pkgName = intent.getPackage();
             if (pkgName == null) {

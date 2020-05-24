@@ -96,16 +96,31 @@ import mirror.android.app.IActivityManager;
             return false;
         }
 
+    /**
+     * 4. 在Target进程的ActivityThread.mH之中，处理Launch Activity消息，主要工作包括：
+     * 4.1 从message.obj之中获取stubIntent，并根据stubIntent构造StubActivityRecord
+     * 4.2 从StubActivityRecord之中获取TargetActivity相关信息，其中StubActivityRecord的初始化可以查看
+     *     {@link com.lody.virtual.server.am.ActivityStack.startActivityProcess(***)}函数
+     * 4.3 检查VClientImpl是否绑定，如果没有绑定则等待绑定完成
+     * 4.4 触发onActivityCreate事件
+     * 4.5 创建VApp的ClassLoader，并将该ClassLoader设定到Target Intent之中
+     * 4.6 将ActivityThread.ActivityClientRecord之中的ActivityInfo信息替换成Target ActivityInfo
+     */
         private boolean handleLaunchActivity(Message msg) {
             Object r = msg.obj;
+            // 从message.obj（ActivityThread.ActivityClientRecord对象）之中读取stub intent
             Intent stubIntent = ActivityThread.ActivityClientRecord.intent.get(r);
             StubActivityRecord saveInstance = new StubActivityRecord(stubIntent);
             if (saveInstance.intent == null) {
                 return true;
             }
+
+            // 从StubActivityRecord之中读取target intent
             Intent intent = saveInstance.intent;
             ComponentName caller = saveInstance.caller;
+            // 获取source activity的token
             IBinder token = ActivityThread.ActivityClientRecord.token.get(r);
+            // 获取TargetActivity的ActivityInfo
             ActivityInfo info = saveInstance.info;
             if (VClientImpl.get().getToken() == null) {
                 InstalledAppInfo installedAppInfo = VirtualCore.get().getInstalledAppInfo(info.packageName, 0);
